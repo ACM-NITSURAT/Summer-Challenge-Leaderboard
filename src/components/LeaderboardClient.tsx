@@ -2,15 +2,23 @@
 
 import React, { useState } from 'react';
 import { ProcessedLeaderboardEntry } from '@/lib/data-utils';
+import ActionModal from './ActionModal';
 
 export default function LeaderboardClient({ initialData, isAdmin = false }: { initialData: ProcessedLeaderboardEntry[], isAdmin?: boolean }) {
   const [data] = useState(initialData);
   const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState<'score' | 'rank' | 'time'>('rank');
+  const [sortField, setSortField] = useState<'score' | 'rank' | 'time' | 'hr_rank'>('rank');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [loadingFlag, setLoadingFlag] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'flag' | 'unflag' | 'alert' | 'reason';
+    hacker: string;
+    title?: string;
+    message?: string;
+  }>({ isOpen: false, type: 'alert', hacker: '' });
   const pageSize = 15;
 
   // Filter
@@ -27,6 +35,8 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
       diff = a.score - b.score;
     } else if (sortField === 'rank') {
       diff = a.official_rank - b.official_rank; // lower is better
+    } else if (sortField === 'hr_rank') {
+      diff = a.rank - b.rank; // lower is better
     } else if (sortField === 'time') {
       diff = a.time_taken - b.time_taken; // lower is better
     }
@@ -35,29 +45,32 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
 
   const handleFlag = async (hacker: string, isCurrentlyFlagged: boolean) => {
     if (!isAdmin) return;
-    let notes = '';
-    if (!isCurrentlyFlagged) {
-      const input = prompt(`Enter notes for flagging ${hacker} (e.g. Manual code review):`);
-      if (input === null) return; // cancelled
-      notes = input;
-    } else {
-      if (!confirm(`Are you sure you want to unflag ${hacker}?`)) return;
-    }
+    setModalConfig({
+      isOpen: true,
+      type: isCurrentlyFlagged ? 'unflag' : 'flag',
+      hacker
+    });
+  };
 
+  const executeFlagAction = async (notes?: string) => {
+    const hacker = modalConfig.hacker;
+    const isFlagged = modalConfig.type === 'flag';
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
     setLoadingFlag(hacker);
+
     try {
       const res = await fetch('/api/flags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hacker, isFlagged: !isCurrentlyFlagged, notes })
+        body: JSON.stringify({ hacker, isFlagged, notes: notes || '' })
       });
       if (res.ok) {
         window.location.reload();
       } else {
-        alert("Failed to update flag");
+        setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'Failed to update flag.' });
       }
     } catch (e) {
-      alert("Error occurred");
+      setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'An error occurred while updating the flag.' });
     } finally {
       setLoadingFlag(null);
     }
@@ -69,12 +82,12 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
       const res = await fetch('/api/sync', { method: 'POST' });
       const resData = await res.json();
       if (!res.ok) {
-        alert(resData.error || "Failed to sync leaderboard");
+        setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Sync Failed', message: resData.error || "Failed to sync leaderboard" });
       } else {
         window.location.reload();
       }
     } catch (e) {
-      alert("Error syncing leaderboard");
+      setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'Error syncing leaderboard' });
     } finally {
       setIsSyncing(false);
     }
@@ -86,12 +99,26 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
   return (
     <div className="w-full max-w-6xl mx-auto py-12 px-4 text-slate-100 relative z-10">
       
-      <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
           <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">
             Summer Challenge Leaderboard
           </h1>
-          <p className="text-slate-400 font-medium">Rankings and submissions for the ACM SVNIT Contest</p>
+          <p className="text-slate-400 font-medium mb-4">Rankings and submissions for the ACM NIT SURAT Contest</p>
+          <a 
+            href="https://drive.google.com/file/d/1BLLxMv2miCSIwCC6i6pm51yXxUMilxF2/view?usp=sharing" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="group inline-flex items-center gap-2.5 px-5 py-2.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded-xl text-sm font-bold hover:bg-yellow-500/20 transition-all cursor-pointer shadow-lg hover:shadow-yellow-500/10 mt-1"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Please read the official Rule Book to avoid getting flagged</span>
+            <svg className="w-4 h-4 ml-1 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
         </div>
         <div className="flex gap-4 w-full md:w-auto relative group">
           <button 
@@ -115,8 +142,11 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/10 text-slate-400 text-xs font-semibold uppercase tracking-widest bg-black/20">
+              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => { setSortField('hr_rank'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
+                HR Rank {sortField === 'hr_rank' && (sortDir === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => { setSortField('rank'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
-                Rank {sortField === 'rank' && (sortDir === 'asc' ? '↑' : '↓')}
+                Official Rank {sortField === 'rank' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
               <th className="p-5">Hacker</th>
               <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => { setSortField('score'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
@@ -146,6 +176,9 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
 
               return (
               <tr key={entry.hacker} className={`transition-all duration-200 ${entry.is_flagged ? 'bg-red-950/40 hover:bg-red-900/40' : 'hover:bg-white/5'}`}>
+                <td className="p-5 font-bold text-lg whitespace-nowrap text-slate-500">
+                  #{entry.rank}
+                </td>
                 <td className="p-5 font-bold text-lg whitespace-nowrap">
                   {entry.is_flagged ? <span className="text-red-400 text-xs font-semibold tracking-wider uppercase bg-red-500/10 px-2.5 py-1 border border-red-500/20 rounded-full">Flagged</span> : <span className={rankStyle}>{rankDisplay}</span>}
                 </td>
@@ -158,11 +191,14 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
                       <div className="font-bold text-slate-100 text-base">{entry.hacker}</div>
                       {entry.school && <div className="text-xs font-medium text-slate-400 truncate max-w-[200px]" title={entry.school}>{entry.school}</div>}
                       {entry.is_flagged && entry.notes && (
-                        <div className="text-xs font-semibold text-red-400 mt-1.5 flex items-center gap-1.5">
+                        <div 
+                          onClick={() => setModalConfig({ isOpen: true, type: 'reason', hacker: entry.hacker, title: `Flag Reason: ${entry.hacker}`, message: entry.notes || '' })}
+                          className="text-xs font-semibold text-red-400 mt-1.5 flex items-center gap-1.5 cursor-pointer hover:text-red-300 transition-colors w-max"
+                        >
                           <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
-                          <span className="truncate max-w-[300px]" title={entry.notes}>Reason: {entry.notes}</span>
+                          <span className="truncate max-w-[300px]" title="Click to view details">Reason: {entry.notes}</span>
                         </div>
                       )}
                     </div>
@@ -213,6 +249,16 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
           </button>
         </div>
       )}
+
+      <ActionModal 
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        targetHacker={modalConfig.hacker}
+        onConfirm={(notes) => (modalConfig.type === 'alert' || modalConfig.type === 'reason') ? setModalConfig(p => ({...p, isOpen: false})) : executeFlagAction(notes)}
+        onCancel={() => setModalConfig(p => ({ ...p, isOpen: false }))}
+      />
     </div>
   );
 }

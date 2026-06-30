@@ -19,7 +19,7 @@ export default async function Home() {
             <Link href="/" className="flex items-center gap-3 group">
               <img src="/acm-logo.png" alt="ACM Logo" className="h-8 w-auto object-contain" />
               <span className="font-bold text-white tracking-wide">
-                ACM SVNIT
+                ACM NIT SURAT
               </span>
             </Link>
             {isAdmin && (

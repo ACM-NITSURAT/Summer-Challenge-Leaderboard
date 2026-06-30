@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ACM SVNIT Leaderboard",
-  description: "Official Leaderboard for ACM SVNIT Summer Challenge",
+  title: "ACM Summer Challenge Leaderboard 2026",
+  description: "Official Leaderboard for ACM NIT SURAT Summer Challenge",
 };
 
 export default function RootLayout({

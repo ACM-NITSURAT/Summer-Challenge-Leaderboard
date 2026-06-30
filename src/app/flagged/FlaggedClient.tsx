@@ -2,17 +2,34 @@
 
 import React, { useState } from 'react';
 import { ProcessedLeaderboardEntry } from '@/lib/data-utils';
+import ActionModal from '@/components/ActionModal';
 
 export default function FlaggedClient({ initialData }: { initialData: ProcessedLeaderboardEntry[] }) {
   const flagged = initialData.filter(d => d.is_flagged);
   const [loading, setLoading] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'flag' | 'unflag' | 'alert';
+    hacker: string;
+    title?: string;
+    message?: string;
+  }>({ isOpen: false, type: 'alert', hacker: '' });
   const pageSize = 15;
 
-  const handleUnflag = async (hacker: string) => {
-    if (!confirm(`Are you sure you want to unflag ${hacker}?`)) return;
+  const handleUnflag = (hacker: string) => {
+    setModalConfig({
+      isOpen: true,
+      type: 'unflag',
+      hacker
+    });
+  };
 
+  const executeUnflag = async () => {
+    const hacker = modalConfig.hacker;
+    setModalConfig(p => ({ ...p, isOpen: false }));
     setLoading(hacker);
+
     try {
       const res = await fetch('/api/flags', {
         method: 'POST',
@@ -22,10 +39,10 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
       if (res.ok) {
         window.location.reload();
       } else {
-        alert("Failed to unflag");
+        setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'Failed to unflag.' });
       }
     } catch (e) {
-      alert("Error occurred");
+      setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'An error occurred while unflagging.' });
     } finally {
       setLoading(null);
     }
@@ -72,7 +89,7 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
                   <button 
                     onClick={() => handleUnflag(entry.hacker)}
                     disabled={loading === entry.hacker}
-                    className="px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                    className="px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
                   >
                     {loading === entry.hacker ? 'Unflagging...' : 'Unflag'}
                   </button>
@@ -93,7 +110,7 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
           <button 
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-30 disabled:hover:bg-slate-900/50 disabled:cursor-not-allowed backdrop-blur-md"
           >
             Previous
           </button>
@@ -103,12 +120,22 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
           <button 
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-30 disabled:hover:bg-slate-900/50 disabled:cursor-not-allowed backdrop-blur-md"
           >
             Next
           </button>
         </div>
       )}
+
+      <ActionModal 
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        targetHacker={modalConfig.hacker}
+        onConfirm={() => modalConfig.type === 'alert' ? setModalConfig(p => ({...p, isOpen: false})) : executeUnflag()}
+        onCancel={() => setModalConfig(p => ({ ...p, isOpen: false }))}
+      />
     </div>
   );
 }
