@@ -11,7 +11,7 @@ export default async function FlaggedPage() {
   const cookieStore = await cookies();
   const isAdmin = cookieStore.get('admin_session')?.value === 'true';
   if (!isAdmin) {
-    redirect('/login');
+    redirect('/spiderman');
   }
 
   const data = getProcessedLeaderboard();

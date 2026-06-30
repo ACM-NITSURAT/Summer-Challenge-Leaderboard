@@ -26,13 +26,7 @@ export default async function Home() {
             )}
           </div>
           <div>
-            {isAdmin ? (
-              <LogoutButton />
-            ) : (
-              <Link href="/login" className="text-sm text-slate-400 hover:text-white transition-colors">
-                Admin Login
-              </Link>
-            )}
+            {isAdmin && <LogoutButton />}
           </div>
         </div>
       </nav>
