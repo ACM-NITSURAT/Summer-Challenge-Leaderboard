@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import util from 'util';
-import path from 'path';
-
-const execPromise = util.promisify(exec);
+import { fetchLeaderboard } from '@/lib/sync';
 
 let lastSyncTime = 0;
 
@@ -17,9 +13,7 @@ export async function POST() {
 
   try {
     lastSyncTime = now;
-    // On Vercel or restricted environments, npm might not be perfectly in path, so we run node directly on the script.
-    const scriptPath = path.join(process.cwd(), 'scripts', 'fetch-leaderboard.js');
-    await execPromise(`node "${scriptPath}"`);
+    await fetchLeaderboard();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Sync error:", error);
