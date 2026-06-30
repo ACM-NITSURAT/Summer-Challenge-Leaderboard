@@ -39,54 +39,112 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const FLAGS_FILE = path.join(DATA_DIR, 'flags.json');
 
-export function getRawLeaderboard(): HackerRankResponse | null {
-  try {
-    if (!fs.existsSync(LEADERBOARD_FILE)) return null;
-    const data = fs.readFileSync(LEADERBOARD_FILE, 'utf-8');
-    return JSON.parse(data) as HackerRankResponse;
-  } catch (err) {
-    console.error("Error reading leaderboard.json", err);
-    return null;
-  }
-}
+const JSONBIN_API_KEY = process.env.JSONBIN_API_KEY;
+const JSONBIN_BIN_ID = process.env.JSONBIN_BIN_ID; // For flags
+const JSONBIN_LEADERBOARD_BIN_ID = process.env.JSONBIN_LEADERBOARD_BIN_ID; // For leaderboard
+// Only use JSONBin if the keys are actually set AND we are deployed to Vercel
+const USE_JSONBIN_FLAGS = !!(JSONBIN_API_KEY && JSONBIN_BIN_ID && process.env.VERCEL === '1');
+const USE_JSONBIN_LEADERBOARD = !!(JSONBIN_API_KEY && JSONBIN_LEADERBOARD_BIN_ID && process.env.VERCEL === '1');
 
-export function getFlagsStore(): FlagsStore {
-  try {
-    if (!fs.existsSync(FLAGS_FILE)) return {};
-    const data = fs.readFileSync(FLAGS_FILE, 'utf-8');
-    return JSON.parse(data) as FlagsStore;
-  } catch (err) {
-    console.error("Error reading flags.json", err);
-    return {};
-  }
-}
-
-export function saveFlagsStore(store: FlagsStore) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+export async function getRawLeaderboard(): Promise<HackerRankResponse | null> {
+  if (USE_JSONBIN_LEADERBOARD) {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_LEADERBOARD_BIN_ID}/latest`, {
+        headers: {
+          'X-Access-Key': JSONBIN_API_KEY!
+        },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.record as HackerRankResponse;
+      }
+    } catch (e) {
+      console.error("Error fetching leaderboard from JSONBin", e);
     }
-    fs.writeFileSync(FLAGS_FILE, JSON.stringify(store, null, 2));
-  } catch (err) {
-    console.error("Error saving flags.json", err);
+    return null;
+  } else {
+    try {
+      if (!fs.existsSync(LEADERBOARD_FILE)) return null;
+      const data = fs.readFileSync(LEADERBOARD_FILE, 'utf-8');
+      return JSON.parse(data) as HackerRankResponse;
+    } catch (err) {
+      console.error("Error reading leaderboard.json", err);
+      return null;
+    }
   }
 }
 
-export function setFlag(hacker: string, isFlagged: boolean, notes: string = "") {
-  const store = getFlagsStore();
+export async function getFlagsStore(): Promise<FlagsStore> {
+  if (USE_JSONBIN_FLAGS) {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+        headers: {
+          'X-Access-Key': JSONBIN_API_KEY!
+        },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return (json.record || {}) as FlagsStore;
+      }
+    } catch (e) {
+      console.error("Error fetching from JSONBin", e);
+    }
+    return {};
+  } else {
+    try {
+      if (!fs.existsSync(FLAGS_FILE)) return {};
+      const data = fs.readFileSync(FLAGS_FILE, 'utf-8');
+      return JSON.parse(data) as FlagsStore;
+    } catch (err) {
+      console.error("Error reading flags.json", err);
+      return {};
+    }
+  }
+}
+
+export async function saveFlagsStore(store: FlagsStore): Promise<void> {
+  if (USE_JSONBIN_FLAGS) {
+    try {
+      await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Access-Key': JSONBIN_API_KEY!
+        },
+        body: JSON.stringify(store)
+      });
+    } catch (e) {
+      console.error("Error saving to JSONBin", e);
+    }
+  } else {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(FLAGS_FILE, JSON.stringify(store, null, 2));
+    } catch (err) {
+      console.error("Error saving flags.json", err);
+    }
+  }
+}
+
+export async function setFlag(hacker: string, isFlagged: boolean, notes: string = ""): Promise<void> {
+  const store = await getFlagsStore();
   if (isFlagged) {
     store[hacker] = { notes, flaggedAt: new Date().toISOString() };
   } else {
     delete store[hacker];
   }
-  saveFlagsStore(store);
+  await saveFlagsStore(store);
 }
 
-export function getProcessedLeaderboard(): ProcessedLeaderboardEntry[] {
-  const raw = getRawLeaderboard();
+export async function getProcessedLeaderboard(): Promise<ProcessedLeaderboardEntry[]> {
+  const raw = await getRawLeaderboard();
   if (!raw || !raw.models) return [];
   
-  const flags = getFlagsStore();
+  const flags = await getFlagsStore();
 
   const processed = raw.models.map(model => {
     const flagInfo = flags[model.hacker];

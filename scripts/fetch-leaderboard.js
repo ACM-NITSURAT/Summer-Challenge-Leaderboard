@@ -63,14 +63,31 @@ async function fetchLeaderboard() {
 
   console.log(`\nSuccess! Fetched ${allModels.length} participants.`);
 
-  // Write to file, preserving the original JSON structure HackerRank expects
+  // Write to file or JSONBin
   const finalData = {
     models: allModels,
     total: allModels.length
   };
 
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(finalData, null, 2), 'utf-8');
-  console.log(`Saved to ${OUTPUT_FILE}`);
+  if (process.env.VERCEL === '1' && process.env.JSONBIN_API_KEY && process.env.JSONBIN_LEADERBOARD_BIN_ID) {
+    console.log(`Saving to JSONBin...`);
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${process.env.JSONBIN_LEADERBOARD_BIN_ID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Access-Key': process.env.JSONBIN_API_KEY
+      },
+      body: JSON.stringify(finalData)
+    });
+    if (!res.ok) {
+      console.error(`Error saving to JSONBin: ${await res.text()}`);
+    } else {
+      console.log(`Successfully saved to JSONBin.`);
+    }
+  } else {
+    fs.writeFileSync(OUTPUT_FILE, JSON.stringify(finalData, null, 2), 'utf-8');
+    console.log(`Saved to ${OUTPUT_FILE}`);
+  }
 }
 
 fetchLeaderboard().catch(err => {

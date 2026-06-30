@@ -7,7 +7,7 @@ import LogoutButton from '@/components/LogoutButton';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const data = getProcessedLeaderboard();
+  const data = await getProcessedLeaderboard();
   const cookieStore = await cookies();
   const isAdmin = cookieStore.get('admin_session')?.value === 'true';
 

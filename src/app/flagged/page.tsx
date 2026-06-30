@@ -14,7 +14,7 @@ export default async function FlaggedPage() {
     redirect('/spiderman');
   }
 
-  const data = getProcessedLeaderboard();
+  const data = await getProcessedLeaderboard();
   
   return (
     <main className="min-h-screen bg-slate-950 font-sans text-slate-200">
