@@ -1,10 +1,19 @@
 import { getProcessedLeaderboard } from '@/lib/data-utils';
 import Link from 'next/link';
 import FlaggedClient from './FlaggedClient';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import LogoutButton from '@/components/LogoutButton';
 
 export const dynamic = 'force-dynamic';
 
-export default function FlaggedPage() {
+export default async function FlaggedPage() {
+  const cookieStore = await cookies();
+  const isAdmin = cookieStore.get('admin_session')?.value === 'true';
+  if (!isAdmin) {
+    redirect('/login');
+  }
+
   const data = getProcessedLeaderboard();
   
   return (
@@ -18,6 +27,9 @@ export default function FlaggedPage() {
             <Link href="/flagged" className="font-bold text-white hover:text-emerald-400 transition-colors">
               Flagged Participants
             </Link>
+          </div>
+          <div>
+            <LogoutButton />
           </div>
         </div>
       </nav>

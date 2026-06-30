@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ProcessedLeaderboardEntry } from '@/lib/data-utils';
 
-export default function LeaderboardClient({ initialData }: { initialData: ProcessedLeaderboardEntry[] }) {
+export default function LeaderboardClient({ initialData, isAdmin = false }: { initialData: ProcessedLeaderboardEntry[], isAdmin?: boolean }) {
   const [data] = useState(initialData);
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<'score' | 'rank' | 'time'>('rank');
@@ -32,6 +32,7 @@ export default function LeaderboardClient({ initialData }: { initialData: Proces
   });
 
   const handleFlag = async (hacker: string) => {
+    if (!isAdmin) return;
     const notes = prompt(`Enter notes for flagging ${hacker} (e.g. Manual code review):`);
     if (notes === null) return; // cancelled
 
@@ -86,7 +87,7 @@ export default function LeaderboardClient({ initialData }: { initialData: Proces
               <th className="p-4 cursor-pointer hover:text-white" onClick={() => { setSortField('time'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc') }}>
                 Time {sortField === 'time' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="p-4 text-right">Actions</th>
+              {isAdmin && <th className="p-4 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50">
@@ -107,20 +108,22 @@ export default function LeaderboardClient({ initialData }: { initialData: Proces
                 </td>
                 <td className="p-4 font-mono">{entry.score}</td>
                 <td className="p-4 font-mono text-slate-400">{entry.time_taken}s</td>
-                <td className="p-4 text-right">
-                  <button 
-                    onClick={() => handleFlag(entry.hacker)}
-                    disabled={loadingFlag === entry.hacker}
-                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded text-sm transition-colors disabled:opacity-50"
-                  >
-                    {loadingFlag === entry.hacker ? 'Flagging...' : 'Flag'}
-                  </button>
-                </td>
+                {isAdmin && (
+                  <td className="p-4 text-right">
+                    <button 
+                      onClick={() => handleFlag(entry.hacker)}
+                      disabled={loadingFlag === entry.hacker}
+                      className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded text-sm transition-colors disabled:opacity-50"
+                    >
+                      {loadingFlag === entry.hacker ? 'Flagging...' : 'Flag'}
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-400">No matching participants found.</td>
+                <td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-slate-400">No matching participants found.</td>
               </tr>
             )}
           </tbody>

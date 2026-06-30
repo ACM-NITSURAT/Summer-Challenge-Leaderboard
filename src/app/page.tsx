@@ -1,11 +1,15 @@
 import { getProcessedLeaderboard } from '@/lib/data-utils';
 import LeaderboardClient from '@/components/LeaderboardClient';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import LogoutButton from '@/components/LogoutButton';
 
 export const dynamic = 'force-dynamic';
 
-export default function Home() {
+export default async function Home() {
   const data = getProcessedLeaderboard();
+  const cookieStore = await cookies();
+  const isAdmin = cookieStore.get('admin_session')?.value === 'true';
 
   return (
     <main className="min-h-screen bg-slate-900 font-sans">
@@ -15,9 +19,20 @@ export default function Home() {
             <Link href="/" className="font-bold text-white hover:text-emerald-400 transition-colors">
               Leaderboard
             </Link>
-            <Link href="/flagged" className="text-slate-400 hover:text-white transition-colors">
-              Flagged Participants
-            </Link>
+            {isAdmin && (
+              <Link href="/flagged" className="text-slate-400 hover:text-white transition-colors">
+                Flagged Participants
+              </Link>
+            )}
+          </div>
+          <div>
+            {isAdmin ? (
+              <LogoutButton />
+            ) : (
+              <Link href="/login" className="text-sm text-slate-400 hover:text-white transition-colors">
+                Admin Login
+              </Link>
+            )}
           </div>
         </div>
       </nav>
@@ -27,7 +42,7 @@ export default function Home() {
           <p>No leaderboard data found. Please add data to <code className="bg-slate-800 p-1 rounded text-emerald-400">data/leaderboard.json</code></p>
         </div>
       ) : (
-        <LeaderboardClient initialData={data} />
+        <LeaderboardClient initialData={data} isAdmin={isAdmin} />
       )}
     </main>
   );
