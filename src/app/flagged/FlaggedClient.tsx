@@ -6,6 +6,8 @@ import { ProcessedLeaderboardEntry } from '@/lib/data-utils';
 export default function FlaggedClient({ initialData }: { initialData: ProcessedLeaderboardEntry[] }) {
   const flagged = initialData.filter(d => d.is_flagged);
   const [loading, setLoading] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
 
   const handleUnflag = async (hacker: string) => {
     if (!confirm(`Are you sure you want to unflag ${hacker}?`)) return;
@@ -29,6 +31,9 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(flagged.length / pageSize));
+  const paginatedData = flagged.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="w-full max-w-6xl mx-auto py-8 px-4 text-slate-100">
       <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-orange-400 mb-8">
@@ -46,7 +51,7 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50">
-            {flagged.map(entry => (
+            {paginatedData.map(entry => (
               <tr key={entry.hacker} className="hover:bg-slate-700/30 transition-colors">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
@@ -79,6 +84,28 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
           </tbody>
         </table>
       </div>
+
+      {flagged.length > pageSize && (
+        <div className="flex justify-between items-center mt-6">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:hover:bg-slate-800"
+          >
+            Previous
+          </button>
+          <span className="text-slate-400 text-sm font-medium">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button 
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:hover:bg-slate-800"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
