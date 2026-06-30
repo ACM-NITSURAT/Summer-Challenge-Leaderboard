@@ -34,13 +34,7 @@ export default async function Home() {
         </div>
       </nav>
       
-      {data.length === 0 ? (
-        <div className="flex items-center justify-center h-[60vh] text-slate-400">
-          <p>No leaderboard data found. Please add data to <code className="bg-slate-800 p-1 rounded text-emerald-400">data/leaderboard.json</code></p>
-        </div>
-      ) : (
-        <LeaderboardClient initialData={data} isAdmin={isAdmin} />
-      )}
+      <LeaderboardClient initialData={data} isAdmin={isAdmin} />
     </main>
   );
 }
