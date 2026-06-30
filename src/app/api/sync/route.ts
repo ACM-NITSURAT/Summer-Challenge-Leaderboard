@@ -15,10 +15,10 @@ export async function POST() {
     lastSyncTime = now;
     await fetchLeaderboard();
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Sync error:", error);
     // Reset timer on failure so they can try again
     lastSyncTime = 0;
-    return NextResponse.json({ error: "Failed to sync leaderboard" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to sync leaderboard" }, { status: 500 });
   }
 }
