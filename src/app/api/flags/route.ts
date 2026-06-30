@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { revalidateTag } from 'next/cache';
 import { setFlag } from '@/lib/data-utils';
 
 export async function POST(request: Request) {
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
     }
 
     await setFlag(hacker, isFlagged, notes || '');
+    revalidateTag('flags');
 
     return NextResponse.json({ success: true });
   } catch (error) {

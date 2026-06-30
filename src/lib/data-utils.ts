@@ -53,7 +53,7 @@ export async function getRawLeaderboard(): Promise<HackerRankResponse | null> {
         headers: {
           'X-Master-Key': JSONBIN_API_KEY!
         },
-        cache: 'no-store'
+        next: { tags: ['leaderboard'], revalidate: 3600 }
       });
       if (res.ok) {
         const json = await res.json();
@@ -82,7 +82,7 @@ export async function getFlagsStore(): Promise<FlagsStore> {
         headers: {
           'X-Master-Key': JSONBIN_API_KEY!
         },
-        cache: 'no-store'
+        next: { tags: ['flags'], revalidate: 3600 }
       });
       if (res.ok) {
         const json = await res.json();

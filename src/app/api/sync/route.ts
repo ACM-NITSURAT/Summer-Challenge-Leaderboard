@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchLeaderboard } from '@/lib/sync';
+import { revalidateTag } from 'next/cache';
 
 let lastSyncTime = 0;
 
@@ -14,6 +15,7 @@ export async function POST() {
   try {
     lastSyncTime = now;
     await fetchLeaderboard();
+    revalidateTag('leaderboard');
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Sync error:", error);
