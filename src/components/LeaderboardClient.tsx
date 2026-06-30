@@ -10,6 +10,7 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [loadingFlag, setLoadingFlag] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isSyncing, setIsSyncing] = useState(false);
   const pageSize = 15;
 
   // Filter
@@ -62,6 +63,23 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
     }
   };
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/sync', { method: 'POST' });
+      const resData = await res.json();
+      if (!res.ok) {
+        alert(resData.error || "Failed to sync leaderboard");
+      } else {
+        window.location.reload();
+      }
+    } catch (e) {
+      alert("Error syncing leaderboard");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const paginatedData = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -76,6 +94,13 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
           <p className="text-slate-400 font-medium">Rankings and submissions for the ACM SVNIT Contest</p>
         </div>
         <div className="flex gap-4 w-full md:w-auto relative group">
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed"
+          >
+            {isSyncing ? "Syncing..." : "Refresh"}
+          </button>
           <input 
             type="text" 
             placeholder="Search hacker or school..." 
@@ -112,6 +137,13 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
               else if (entry.official_rank === 2) { rankDisplay = "🥈 2nd"; rankStyle = "text-slate-300 font-bold"; }
               else if (entry.official_rank === 3) { rankDisplay = "🥉 3rd"; rankStyle = "text-amber-600 font-bold"; }
 
+              // Time formatting
+              const h = Math.floor(entry.time_taken / 3600);
+              const m = Math.floor((entry.time_taken % 3600) / 60);
+              const s = entry.time_taken % 60;
+              const pad = (num: number) => num.toString().padStart(2, '0');
+              const timeDisplay = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+
               return (
               <tr key={entry.hacker} className={`transition-all duration-200 ${entry.is_flagged ? 'bg-red-950/40 hover:bg-red-900/40' : 'hover:bg-white/5'}`}>
                 <td className="p-5 font-bold text-lg whitespace-nowrap">
@@ -125,17 +157,25 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
                     <div>
                       <div className="font-bold text-slate-100 text-base">{entry.hacker}</div>
                       {entry.school && <div className="text-xs font-medium text-slate-400 truncate max-w-[200px]" title={entry.school}>{entry.school}</div>}
+                      {entry.is_flagged && entry.notes && (
+                        <div className="text-xs font-semibold text-red-400 mt-1.5 flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <span className="truncate max-w-[300px]" title={entry.notes}>Reason: {entry.notes}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </td>
                 <td className="p-5 font-mono text-emerald-400 font-semibold text-lg">{entry.score}</td>
-                <td className="p-5 font-mono text-slate-400">{entry.time_taken}s</td>
+                <td className="p-5 font-mono text-slate-400">{timeDisplay}</td>
                 {isAdmin && (
                   <td className="p-5 text-right">
                     <button 
                       onClick={() => handleFlag(entry.hacker, entry.is_flagged || false)}
                       disabled={loadingFlag === entry.hacker}
-                      className={`px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${entry.is_flagged ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]'}`}
+                      className={`px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${entry.is_flagged ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]'}`}
                     >
                       {loadingFlag === entry.hacker ? '...' : (entry.is_flagged ? 'Unflag' : 'Flag')}
                     </button>
@@ -157,7 +197,7 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
           <button 
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-30 disabled:hover:bg-slate-900/50 disabled:cursor-not-allowed backdrop-blur-md"
           >
             Previous
           </button>
@@ -167,7 +207,7 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
           <button 
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-30 disabled:hover:bg-slate-900/50 disabled:cursor-not-allowed backdrop-blur-md"
           >
             Next
           </button>
