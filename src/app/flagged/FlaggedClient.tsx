@@ -35,41 +35,44 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
   const paginatedData = flagged.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="w-full max-w-6xl mx-auto py-8 px-4 text-slate-100">
-      <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-orange-400 mb-8">
+    <div className="w-full max-w-6xl mx-auto py-12 px-4 text-slate-100 relative z-10">
+
+      <h1 className="text-4xl font-extrabold text-white mb-10 tracking-tight">
         Flagged Participants
       </h1>
 
-      <div className="overflow-x-auto bg-slate-800/50 border border-slate-700 rounded-xl shadow-xl backdrop-blur-sm">
+      <div className="overflow-x-auto bg-slate-900/40 border border-white/10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.4)] backdrop-blur-xl">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-700 text-slate-400 text-sm uppercase tracking-wider">
-              <th className="p-4">Hacker</th>
-              <th className="p-4">Original Rank</th>
-              <th className="p-4">Notes</th>
-              <th className="p-4 text-right">Actions</th>
+            <tr className="border-b border-white/10 text-slate-400 text-xs font-semibold uppercase tracking-widest bg-black/20">
+              <th className="p-5">Hacker</th>
+              <th className="p-5">Original Rank</th>
+              <th className="p-5">Notes</th>
+              <th className="p-5 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-700/50">
+          <tbody className="divide-y divide-white/5">
             {paginatedData.map(entry => (
-              <tr key={entry.hacker} className="hover:bg-slate-700/30 transition-colors">
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <img src={entry.avatar} alt="avatar" className="w-8 h-8 rounded-full bg-slate-700" />
+              <tr key={entry.hacker} className="hover:bg-white/5 transition-all duration-200">
+                <td className="p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <img src={entry.avatar} alt="avatar" className="relative w-10 h-10 rounded-full bg-slate-800 border border-white/10 shadow-lg object-cover" />
+                    </div>
                     <div>
-                      <div className="font-semibold text-red-400">{entry.hacker}</div>
+                      <div className="font-bold text-slate-100 text-base">{entry.hacker}</div>
                     </div>
                   </div>
                 </td>
-                <td className="p-4 text-slate-500">#{entry.rank}</td>
-                <td className="p-4">
+                <td className="p-5 text-slate-500 font-mono text-lg">#{entry.rank}</td>
+                <td className="p-5">
                   <span className="text-slate-300 italic">{entry.notes || 'No notes provided'}</span>
                 </td>
-                <td className="p-4 text-right">
+                <td className="p-5 text-right">
                   <button 
                     onClick={() => handleUnflag(entry.hacker)}
                     disabled={loading === entry.hacker}
-                    className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded text-sm transition-colors disabled:opacity-50"
+                    className="px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
                   >
                     {loading === entry.hacker ? 'Unflagging...' : 'Unflag'}
                   </button>
@@ -78,7 +81,7 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
             ))}
             {flagged.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-slate-400">No participants are currently flagged.</td>
+                <td colSpan={4} className="p-10 text-center text-slate-400 text-lg">No participants are currently flagged.</td>
               </tr>
             )}
           </tbody>
@@ -86,21 +89,21 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
       </div>
 
       {flagged.length > pageSize && (
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex justify-between items-center mt-8 px-2">
           <button 
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:hover:bg-slate-800"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
           >
             Previous
           </button>
-          <span className="text-slate-400 text-sm font-medium">
+          <span className="px-4 py-1.5 bg-slate-900/50 border border-white/5 rounded-lg text-slate-400 text-sm font-medium backdrop-blur-md shadow-inner">
             Page {currentPage} of {totalPages}
           </span>
           <button 
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:hover:bg-slate-800"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
           >
             Next
           </button>

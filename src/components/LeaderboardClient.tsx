@@ -66,71 +66,83 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
   const paginatedData = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="w-full max-w-6xl mx-auto py-8 px-4 text-slate-100">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
-          ACM SVNIT Official Leaderboard
-        </h1>
-        <div className="flex gap-4 w-full md:w-auto">
+    <div className="w-full max-w-6xl mx-auto py-12 px-4 text-slate-100 relative z-10">
+      
+      <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+        <div>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">
+            Summer Challenge Leaderboard
+          </h1>
+          <p className="text-slate-400 font-medium">Rankings and submissions for the ACM SVNIT Contest</p>
+        </div>
+        <div className="flex gap-4 w-full md:w-auto relative group">
           <input 
             type="text" 
-            placeholder="Search username or school..." 
+            placeholder="Search hacker or school..." 
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
+            className="relative px-5 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl focus:outline-none focus:border-emerald-500/50 w-full md:w-72 shadow-xl backdrop-blur-md transition-all text-sm"
           />
         </div>
       </div>
 
-      <div className="overflow-x-auto bg-slate-800/50 border border-slate-700 rounded-xl shadow-xl backdrop-blur-sm">
+      <div className="overflow-x-auto bg-slate-900/40 border border-white/10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.4)] backdrop-blur-xl">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-700 text-slate-400 text-sm uppercase tracking-wider">
-              <th className="p-4 cursor-pointer hover:text-white" onClick={() => { setSortField('rank'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
-                Official Rank {sortField === 'rank' && (sortDir === 'asc' ? '↑' : '↓')}
+            <tr className="border-b border-white/10 text-slate-400 text-xs font-semibold uppercase tracking-widest bg-black/20">
+              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => { setSortField('rank'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
+                Rank {sortField === 'rank' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="p-4">Original Rank</th>
-              <th className="p-4">Hacker</th>
-              <th className="p-4 cursor-pointer hover:text-white" onClick={() => { setSortField('score'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
+              <th className="p-5">Hacker</th>
+              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => { setSortField('score'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
                 Score {sortField === 'score' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="p-4 cursor-pointer hover:text-white" onClick={() => { setSortField('time'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
+              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => { setSortField('time'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}>
                 Time {sortField === 'time' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
-              {isAdmin && <th className="p-4 text-right">Actions</th>}
+              {isAdmin && <th className="p-5 text-right">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-700/50">
-            {paginatedData.map(entry => (
-              <tr key={entry.hacker} className={`transition-colors ${entry.is_flagged ? 'bg-red-900/30 hover:bg-red-900/50' : 'hover:bg-slate-700/30'}`}>
-                <td className="p-4 font-bold text-lg text-emerald-400">
-                  {entry.is_flagged ? <span className="text-red-400 text-sm bg-red-500/10 px-2 py-1 border border-red-500/20 rounded">Flagged</span> : `#${entry.official_rank}`}
+          <tbody className="divide-y divide-white/5">
+            {paginatedData.map(entry => {
+              // Medal logic
+              let rankDisplay = `#${entry.official_rank}`;
+              let rankStyle = "text-slate-300";
+              if (entry.official_rank === 1) { rankDisplay = "🥇 1st"; rankStyle = "text-yellow-400 font-bold"; }
+              else if (entry.official_rank === 2) { rankDisplay = "🥈 2nd"; rankStyle = "text-slate-300 font-bold"; }
+              else if (entry.official_rank === 3) { rankDisplay = "🥉 3rd"; rankStyle = "text-amber-600 font-bold"; }
+
+              return (
+              <tr key={entry.hacker} className={`transition-all duration-200 ${entry.is_flagged ? 'bg-red-950/40 hover:bg-red-900/40' : 'hover:bg-white/5'}`}>
+                <td className="p-5 font-bold text-lg whitespace-nowrap">
+                  {entry.is_flagged ? <span className="text-red-400 text-xs font-semibold tracking-wider uppercase bg-red-500/10 px-2.5 py-1 border border-red-500/20 rounded-full">Flagged</span> : <span className={rankStyle}>{rankDisplay}</span>}
                 </td>
-                <td className="p-4 text-slate-500">#{entry.rank}</td>
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <img src={entry.avatar} alt="avatar" className="w-8 h-8 rounded-full bg-slate-700" />
+                <td className="p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <img src={entry.avatar} alt="avatar" className="relative w-10 h-10 rounded-full bg-slate-800 border border-white/10 shadow-lg object-cover" />
+                    </div>
                     <div>
-                      <div className="font-semibold">{entry.hacker}</div>
-                      {entry.school && <div className="text-xs text-slate-400 truncate max-w-[200px]" title={entry.school}>{entry.school}</div>}
+                      <div className="font-bold text-slate-100 text-base">{entry.hacker}</div>
+                      {entry.school && <div className="text-xs font-medium text-slate-400 truncate max-w-[200px]" title={entry.school}>{entry.school}</div>}
                     </div>
                   </div>
                 </td>
-                <td className="p-4 font-mono">{entry.score}</td>
-                <td className="p-4 font-mono text-slate-400">{entry.time_taken}s</td>
+                <td className="p-5 font-mono text-emerald-400 font-semibold text-lg">{entry.score}</td>
+                <td className="p-5 font-mono text-slate-400">{entry.time_taken}s</td>
                 {isAdmin && (
-                  <td className="p-4 text-right">
+                  <td className="p-5 text-right">
                     <button 
                       onClick={() => handleFlag(entry.hacker, entry.is_flagged || false)}
                       disabled={loadingFlag === entry.hacker}
-                      className={`px-3 py-1.5 border rounded text-sm transition-colors disabled:opacity-50 ${entry.is_flagged ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20'}`}
+                      className={`px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${entry.is_flagged ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]'}`}
                     >
                       {loadingFlag === entry.hacker ? '...' : (entry.is_flagged ? 'Unflag' : 'Flag')}
                     </button>
                   </td>
                 )}
               </tr>
-            ))}
+            )})}
             {sorted.length === 0 && (
               <tr>
                 <td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-slate-400">No matching participants found.</td>
@@ -141,21 +153,21 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
       </div>
 
       {sorted.length > pageSize && (
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex justify-between items-center mt-8 px-2">
           <button 
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:hover:bg-slate-800"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
           >
             Previous
           </button>
-          <span className="text-slate-400 text-sm font-medium">
+          <span className="px-4 py-1.5 bg-slate-900/50 border border-white/5 rounded-lg text-slate-400 text-sm font-medium backdrop-blur-md shadow-inner">
             Page {currentPage} of {totalPages}
           </span>
           <button 
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:hover:bg-slate-800"
+            className="px-5 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 text-sm font-semibold hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:hover:bg-slate-900/50 backdrop-blur-md"
           >
             Next
           </button>
