@@ -51,7 +51,7 @@ export async function getRawLeaderboard(): Promise<HackerRankResponse | null> {
     try {
       const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_LEADERBOARD_BIN_ID}/latest`, {
         headers: {
-          'X-Access-Key': JSONBIN_API_KEY!
+          'X-Master-Key': JSONBIN_API_KEY!
         },
         cache: 'no-store'
       });
@@ -80,7 +80,7 @@ export async function getFlagsStore(): Promise<FlagsStore> {
     try {
       const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
         headers: {
-          'X-Access-Key': JSONBIN_API_KEY!
+          'X-Master-Key': JSONBIN_API_KEY!
         },
         cache: 'no-store'
       });
@@ -111,7 +111,7 @@ export async function saveFlagsStore(store: FlagsStore): Promise<void> {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'X-Access-Key': JSONBIN_API_KEY!
+          'X-Master-Key': JSONBIN_API_KEY!
         },
         body: JSON.stringify(store)
       });

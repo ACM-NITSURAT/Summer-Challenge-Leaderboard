@@ -71,7 +71,7 @@ export async function fetchLeaderboard() {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Access-Key': process.env.JSONBIN_API_KEY
+        'X-Master-Key': process.env.JSONBIN_API_KEY
       },
       body: JSON.stringify(finalData)
     });
