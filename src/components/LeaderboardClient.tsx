@@ -77,6 +77,17 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
   };
 
   const handleSync = async () => {
+    const lastSync = localStorage.getItem('lastSyncTime');
+    if (lastSync) {
+      const now = Date.now();
+      const diff = now - parseInt(lastSync, 10);
+      if (diff < 3 * 60 * 1000) {
+        const remainingSeconds = Math.ceil((3 * 60 * 1000 - diff) / 1000);
+        setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Cooldown Active', message: `Please wait ${remainingSeconds} seconds before refreshing again.` });
+        return;
+      }
+    }
+
     setIsSyncing(true);
     try {
       const res = await fetch('/api/sync', { method: 'POST' });
@@ -84,6 +95,7 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
       if (!res.ok) {
         setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Sync Failed', message: resData.error || "Failed to sync leaderboard" });
       } else {
+        localStorage.setItem('lastSyncTime', Date.now().toString());
         window.location.reload();
       }
     } catch (e) {
@@ -109,12 +121,12 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
             href="https://drive.google.com/file/d/1BLLxMv2miCSIwCC6i6pm51yXxUMilxF2/view?usp=sharing" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="group inline-flex items-center gap-2.5 px-5 py-2.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded-xl text-sm font-bold hover:bg-yellow-500/20 transition-all cursor-pointer shadow-lg hover:shadow-yellow-500/10 mt-1"
+            className="group inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded-xl text-xs md:text-sm font-bold hover:bg-yellow-500/20 transition-all cursor-pointer shadow-lg hover:shadow-yellow-500/10 mt-1 max-w-full"
           >
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <span>Please read the official Rule Book to avoid getting flagged</span>
+            <span className="whitespace-normal">Please read the official Rule Book to avoid getting flagged</span>
             <svg className="w-4 h-4 ml-1 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
