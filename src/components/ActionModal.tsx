@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 type ModalProps = {
   isOpen: boolean;
-  type: 'flag' | 'unflag' | 'alert' | 'reason';
+  type: 'flag' | 'unflag' | 'alert' | 'reason' | 'add_cf' | 'remove';
   title?: string;
   message?: string;
   targetHacker?: string;
@@ -27,6 +27,8 @@ export default function ActionModal({ isOpen, type, title, message, targetHacker
         <h3 className="text-xl font-bold text-white mb-2">
           {type === 'alert' ? title || 'Notice' : 
            type === 'reason' ? title || 'Flag Reason' :
+           type === 'add_cf' ? 'Add Codeforces Participant' :
+           type === 'remove' ? 'Remove Participant' :
            type === 'flag' ? 'Flag Participant' : 'Unflag Participant'}
         </h3>
         
@@ -42,18 +44,22 @@ export default function ActionModal({ isOpen, type, title, message, targetHacker
         ) : (
           <p className="text-slate-300 text-sm mb-6">
             {type === 'alert' ? message : 
+             type === 'add_cf' ? 'Enter the exact Codeforces handle. They will appear on the leaderboard after the next Refresh.' :
+             type === 'remove' ? `Are you sure you want to permanently remove ${targetHacker}?` :
              type === 'flag' ? `Please provide a reason for flagging ${targetHacker}. They will be removed from the official rankings.` : 
              `Are you sure you want to unflag ${targetHacker}? They will be restored to the leaderboard.`}
           </p>
         )}
 
-        {type === 'flag' && (
+        {(type === 'flag' || type === 'add_cf') && (
           <div className="mb-6">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Reason (Notes)</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              {type === 'add_cf' ? 'Codeforces Handle' : 'Reason (Notes)'}
+            </label>
             <input 
               type="text" 
               autoFocus
-              placeholder="e.g. Manual code review"
+              placeholder={type === 'add_cf' ? "e.g. tourist" : "e.g. Manual code review"}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 transition-colors"
@@ -63,7 +69,7 @@ export default function ActionModal({ isOpen, type, title, message, targetHacker
         )}
 
         <div className="flex justify-end gap-3 mt-2">
-          {(type === 'flag' || type === 'unflag') && (
+          {(type === 'flag' || type === 'unflag' || type === 'add_cf' || type === 'remove') && (
             <button 
               onClick={onCancel}
               className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
@@ -76,11 +82,11 @@ export default function ActionModal({ isOpen, type, title, message, targetHacker
             onClick={() => onConfirm(notes)}
             className={`px-4 py-2 rounded-lg text-sm font-bold shadow-lg transition-colors cursor-pointer ${
               type === 'alert' || type === 'reason' ? 'bg-emerald-600 hover:bg-emerald-500 text-white' :
-              type === 'flag' ? 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 
+              type === 'flag' || type === 'remove' ? 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 
               'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]'
             }`}
           >
-            {type === 'alert' || type === 'reason' ? 'Close' : type === 'flag' ? 'Flag Hacker' : 'Unflag Hacker'}
+            {type === 'alert' || type === 'reason' ? 'Close' : type === 'flag' ? 'Flag Hacker' : type === 'remove' ? 'Remove' : type === 'add_cf' ? 'Add Handle' : 'Unflag Hacker'}
           </button>
         </div>
       </div>

@@ -24,6 +24,8 @@ export interface CodeforcesModel {
   organization: string;
   firstName?: string;
   lastName?: string;
+  contestCount?: number;
+  lastContestName?: string;
 }
 
 export interface HackerRankResponse {
@@ -38,10 +40,12 @@ export interface FlagData {
   flaggedAt: string;
 }
 
-// Key is hacker (username)
 export interface FlagsStore {
   hackerrank?: Record<string, FlagData>;
   codeforces?: Record<string, FlagData>;
+  hidden_hr?: string[];
+  hidden_cf?: string[];
+  extra_cf?: string[];
   [key: string]: any; // fallback
 }
 
@@ -178,15 +182,38 @@ export async function setFlag(hacker: string, isFlagged: boolean, notes: string 
   await saveFlagsStore(store);
 }
 
+export async function manageAdminList(
+  listName: 'hidden_hr' | 'hidden_cf' | 'extra_cf',
+  action: 'add' | 'remove',
+  item: string
+): Promise<void> {
+  const store = await getFlagsStore();
+  let list = store[listName] || [];
+  
+  if (action === 'add') {
+    if (!list.includes(item)) {
+      list.push(item);
+    }
+  } else {
+    list = list.filter(x => x !== item);
+  }
+  
+  store[listName] = list;
+  await saveFlagsStore(store);
+}
+
 export async function getProcessedLeaderboard(): Promise<ProcessedLeaderboardEntry[]> {
   const raw = await getRawLeaderboard();
   if (!raw || !raw.models) return [];
   
   const flags = await getFlagsStore();
   const hrFlags = flags.hackerrank || flags;
+  const hiddenHr = flags.hidden_hr || [];
 
-  const processed = raw.models.map(model => {
-    const flagInfo = hrFlags[model.hacker];
+  const processed = raw.models
+    .filter(m => !hiddenHr.includes(m.hacker))
+    .map(model => {
+      const flagInfo = hrFlags[model.hacker];
     return {
       ...model,
       official_rank: -1, // placeholder
@@ -227,9 +254,12 @@ export async function getProcessedCFLeaderboard(): Promise<ProcessedCFLeaderboar
   
   const flags = await getFlagsStore();
   const cfFlags = flags.codeforces || {};
+  const hiddenCf = flags.hidden_cf || [];
 
-  let processed = raw.cf_models.map(model => {
-    const flagInfo = cfFlags[model.handle];
+  let processed = raw.cf_models
+    .filter(m => !hiddenCf.includes(m.handle))
+    .map(model => {
+      const flagInfo = cfFlags[model.handle];
     return {
       ...model,
       official_rank: -1,

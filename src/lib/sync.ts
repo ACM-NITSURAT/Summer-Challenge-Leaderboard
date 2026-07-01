@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import * as xlsx from 'xlsx';
+import { getFlagsStore } from './data-utils';
 
 const CONTEST_SLUG = 'acm-summer-challenge-2026';
 const OUTPUT_FILE = path.join(process.cwd(), 'data', 'leaderboard.json');
@@ -62,10 +63,21 @@ export async function fetchLeaderboard() {
 
   console.log(`Success! Fetched ${allModels.length} HackerRank participants.`);
 
+  const flagsStore = await getFlagsStore();
+  const hiddenHr = flagsStore.hidden_hr || [];
+  const hiddenCf = flagsStore.hidden_cf || [];
+  const extraCf = flagsStore.extra_cf || [];
+
+  if (hiddenHr.length > 0) {
+    allModels = allModels.filter(m => !hiddenHr.includes(m.hacker));
+    console.log(`Filtered out hidden HackerRank users.`);
+  }
+
   // --- CODEFORCES SYNC ---
   let cfModels: any[] = [];
   try {
     console.log("Parsing Excel file for Codeforces IDs...");
+    let cfHandles: string[] = [];
     if (fs.existsSync(EXCEL_FILE)) {
       const fileBuffer = fs.readFileSync(EXCEL_FILE);
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
@@ -73,15 +85,21 @@ export async function fetchLeaderboard() {
       const sheet = workbook.Sheets[sheetName];
       const data = xlsx.utils.sheet_to_json(sheet) as any[];
       
-      const cfHandles = data
+      cfHandles = data
         .map(row => row['Codeforces ID\nStrict Rule: Your Codeforces ID must be the exact same as your HackerRank ID name.  '])
         .filter(handle => handle && typeof handle === 'string' && handle.trim() !== '')
         .map(handle => handle.trim());
+    } else {
+      console.warn("Excel file not found.");
+    }
       
-      // Distinct handles
-      const uniqueHandles = [...new Set(cfHandles)];
+    // Add extra CF handles
+    cfHandles = cfHandles.concat(extraCf);
+
+    // Distinct handles and filter out hidden ones
+    const uniqueHandles = [...new Set(cfHandles)].filter(h => !hiddenCf.includes(h));
       
-      if (uniqueHandles.length > 0) {
+    if (uniqueHandles.length > 0) {
         console.log(`Fetching Codeforces data for ${uniqueHandles.length} handles...`);
         // Batch them 300 at a time
         const fetchBatch = async (batch: string[]) => {
@@ -111,10 +129,33 @@ export async function fetchLeaderboard() {
           await fetchBatch(batch);
           await new Promise(r => setTimeout(r, 500)); // sleep between large batches
         }
+
+        if (cfModels.length > 0) {
+          console.log(`Fetching contest history for ${cfModels.length} Codeforces handles...`);
+          for (let i = 0; i < cfModels.length; i++) {
+            const model = cfModels[i];
+            try {
+              const ratingUrl = `https://codeforces.com/api/user.rating?handle=${model.handle}`;
+              const ratingRes = await fetch(ratingUrl);
+              if (ratingRes.ok) {
+                const ratingData = await ratingRes.json();
+                if (ratingData.status === 'OK' && Array.isArray(ratingData.result)) {
+                  model.contestCount = ratingData.result.length;
+                  if (model.contestCount > 0) {
+                    model.lastContestName = ratingData.result[ratingData.result.length - 1].contestName;
+                  }
+                }
+              } else {
+                console.warn(`Failed to fetch rating for ${model.handle}`);
+              }
+            } catch (e) {
+              console.warn(`Error fetching rating for ${model.handle}`, e);
+            }
+            // Sleep to respect Codeforces rate limits
+            await new Promise(r => setTimeout(r, 200));
+          }
+        }
       }
-    } else {
-      console.warn("Excel file not found, skipping Codeforces fetch.");
-    }
   } catch (err) {
     console.error("Error fetching Codeforces data:", err);
   }

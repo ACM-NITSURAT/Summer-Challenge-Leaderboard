@@ -14,7 +14,7 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
   const [isSyncing, setIsSyncing] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
-    type: 'flag' | 'unflag' | 'alert' | 'reason';
+    type: 'flag' | 'unflag' | 'alert' | 'reason' | 'remove';
     hacker: string;
     title?: string;
     message?: string;
@@ -52,6 +52,15 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
     });
   };
 
+  const handleRemove = (hacker: string) => {
+    if (!isAdmin) return;
+    setModalConfig({
+      isOpen: true,
+      type: 'remove',
+      hacker
+    });
+  };
+
   const executeFlagAction = async (notes?: string) => {
     const hacker = modalConfig.hacker;
     const isFlagged = modalConfig.type === 'flag';
@@ -71,6 +80,29 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
       }
     } catch (e) {
       setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'An error occurred while updating the flag.' });
+    } finally {
+      setLoadingFlag(null);
+    }
+  };
+
+  const executeRemoveAction = async () => {
+    const hacker = modalConfig.hacker;
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
+    setLoadingFlag(hacker + '_remove');
+
+    try {
+      const res = await fetch('/api/admin/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hacker, platform: 'hr' })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'Failed to remove user.' });
+      }
+    } catch (e) {
+      setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'An error occurred while removing the user.' });
     } finally {
       setLoadingFlag(null);
     }
@@ -219,13 +251,20 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
                 <td className="p-5 font-mono text-emerald-400 font-semibold text-lg">{entry.score}</td>
                 <td className="p-5 font-mono text-slate-400">{timeDisplay}</td>
                 {isAdmin && (
-                  <td className="p-5 text-right">
+                  <td className="p-5 text-right flex items-center justify-end gap-2">
                     <button 
                       onClick={() => handleFlag(entry.hacker, entry.is_flagged || false)}
                       disabled={loadingFlag === entry.hacker}
-                      className={`px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${entry.is_flagged ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]'}`}
+                      className={`px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${entry.is_flagged ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.1)] hover:shadow-[0_0_20px_rgba(249,115,22,0.2)]'}`}
                     >
                       {loadingFlag === entry.hacker ? '...' : (entry.is_flagged ? 'Unflag' : 'Flag')}
+                    </button>
+                    <button 
+                      onClick={() => handleRemove(entry.hacker)}
+                      disabled={loadingFlag === entry.hacker + '_remove'}
+                      className="px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                    >
+                      {loadingFlag === entry.hacker + '_remove' ? '...' : 'Remove'}
                     </button>
                   </td>
                 )}
@@ -268,7 +307,11 @@ export default function LeaderboardClient({ initialData, isAdmin = false }: { in
         title={modalConfig.title}
         message={modalConfig.message}
         targetHacker={modalConfig.hacker}
-        onConfirm={(notes) => (modalConfig.type === 'alert' || modalConfig.type === 'reason') ? setModalConfig(p => ({...p, isOpen: false})) : executeFlagAction(notes)}
+        onConfirm={(notes) => {
+          if (modalConfig.type === 'alert' || modalConfig.type === 'reason') setModalConfig(p => ({...p, isOpen: false}));
+          else if (modalConfig.type === 'remove') executeRemoveAction();
+          else executeFlagAction(notes);
+        }}
         onCancel={() => setModalConfig(p => ({ ...p, isOpen: false }))}
       />
     </div>
