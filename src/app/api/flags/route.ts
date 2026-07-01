@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     }
 
     await setFlag(hacker, isFlagged, notes || '', platform);
-    revalidateTag('flags');
+    revalidateTag('flags', 'max');
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -15,7 +15,7 @@ export async function POST() {
   try {
     lastSyncTime = now;
     await fetchLeaderboard();
-    revalidateTag('leaderboard');
+    revalidateTag('leaderboard', 'max');
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Sync error:", error);
