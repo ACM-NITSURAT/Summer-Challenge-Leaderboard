@@ -12,13 +12,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { hacker, isFlagged, notes } = body;
+    const { hacker, isFlagged, notes, platform = 'hr' } = body;
 
-    if (!hacker) {
-      return NextResponse.json({ error: 'Hacker username is required' }, { status: 400 });
+    if (!hacker || typeof isFlagged !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    await setFlag(hacker, isFlagged, notes || '');
+    await setFlag(hacker, isFlagged, notes || '', platform);
     revalidateTag('flags');
 
     return NextResponse.json({ success: true });

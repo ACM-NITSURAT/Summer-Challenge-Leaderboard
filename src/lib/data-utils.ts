@@ -15,8 +15,20 @@ export interface HackerRankModel {
   submitted_at: string;
 }
 
+export interface CodeforcesModel {
+  handle: string;
+  rating: number;
+  maxRating: number;
+  rank: string;
+  avatar: string;
+  organization: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 export interface HackerRankResponse {
   models: HackerRankModel[];
+  cf_models?: CodeforcesModel[];
   page: number;
   total: number;
 }
@@ -27,9 +39,19 @@ export interface FlagData {
 }
 
 // Key is hacker (username)
-export type FlagsStore = Record<string, FlagData>;
+export interface FlagsStore {
+  hackerrank?: Record<string, FlagData>;
+  codeforces?: Record<string, FlagData>;
+  [key: string]: any; // fallback
+}
 
 export interface ProcessedLeaderboardEntry extends HackerRankModel {
+  official_rank: number;
+  is_flagged: boolean;
+  notes?: string;
+}
+
+export interface ProcessedCFLeaderboardEntry extends CodeforcesModel {
   official_rank: number;
   is_flagged: boolean;
   notes?: string;
@@ -130,12 +152,28 @@ export async function saveFlagsStore(store: FlagsStore): Promise<void> {
   }
 }
 
-export async function setFlag(hacker: string, isFlagged: boolean, notes: string = ""): Promise<void> {
+export async function setFlag(hacker: string, isFlagged: boolean, notes: string = "", platform: 'hr' | 'cf' = 'hr'): Promise<void> {
   const store = await getFlagsStore();
+  
+  // Migration for old format
+  if (!store.hackerrank) {
+    const migratedHR: Record<string, FlagData> = {};
+    for (const key of Object.keys(store)) {
+      if (key !== 'hackerrank' && key !== 'codeforces') {
+        migratedHR[key] = store[key];
+        delete store[key];
+      }
+    }
+    store.hackerrank = migratedHR;
+  }
+  if (!store.codeforces) store.codeforces = {};
+
+  const targetStore = platform === 'hr' ? store.hackerrank : store.codeforces;
+  
   if (isFlagged) {
-    store[hacker] = { notes, flaggedAt: new Date().toISOString() };
+    targetStore[hacker] = { notes, flaggedAt: new Date().toISOString() };
   } else {
-    delete store[hacker];
+    delete targetStore[hacker];
   }
   await saveFlagsStore(store);
 }
@@ -145,9 +183,10 @@ export async function getProcessedLeaderboard(): Promise<ProcessedLeaderboardEnt
   if (!raw || !raw.models) return [];
   
   const flags = await getFlagsStore();
+  const hrFlags = flags.hackerrank || flags;
 
   const processed = raw.models.map(model => {
-    const flagInfo = flags[model.hacker];
+    const flagInfo = hrFlags[model.hacker];
     return {
       ...model,
       official_rank: -1, // placeholder
@@ -176,6 +215,51 @@ export async function getProcessedLeaderboard(): Promise<ProcessedLeaderboardEnt
       currentRank++;
       prevScore = processed[i].score;
       prevTime = processed[i].time_taken;
+    }
+  }
+
+  return processed;
+}
+
+export async function getProcessedCFLeaderboard(): Promise<ProcessedCFLeaderboardEntry[]> {
+  const raw = await getRawLeaderboard();
+  if (!raw || !raw.cf_models) return [];
+  
+  const flags = await getFlagsStore();
+  const cfFlags = flags.codeforces || {};
+
+  let processed = raw.cf_models.map(model => {
+    const flagInfo = cfFlags[model.handle];
+    return {
+      ...model,
+      official_rank: -1,
+      is_flagged: !!flagInfo,
+      notes: flagInfo?.notes
+    };
+  });
+
+  // Sort by rating desc
+  processed.sort((a, b) => {
+    return (b.rating || 0) - (a.rating || 0);
+  });
+
+  // Calculate official ranks
+  let currentRank = 1;
+  let prevRating = -1;
+  let tiedRank = 1;
+
+  for (let i = 0; i < processed.length; i++) {
+    if (processed[i].is_flagged) continue;
+
+    const rating = processed[i].rating || 0;
+    if (rating === prevRating) {
+      processed[i].official_rank = tiedRank;
+      currentRank++;
+    } else {
+      processed[i].official_rank = currentRank;
+      tiedRank = currentRank;
+      currentRank++;
+      prevRating = rating;
     }
   }
 

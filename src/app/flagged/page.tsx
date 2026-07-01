@@ -1,4 +1,4 @@
-import { getProcessedLeaderboard } from '@/lib/data-utils';
+import { getProcessedLeaderboard, getProcessedCFLeaderboard } from '@/lib/data-utils';
 import Link from 'next/link';
 import FlaggedClient from './FlaggedClient';
 import { cookies } from 'next/headers';
@@ -14,8 +14,27 @@ export default async function FlaggedPage() {
     redirect('/spiderman');
   }
 
-  const data = await getProcessedLeaderboard();
-  
+  const hrData = await getProcessedLeaderboard();
+  const cfData = await getProcessedCFLeaderboard();
+
+  const flaggedHR = hrData.filter(d => d.is_flagged).map(d => ({
+    hacker: d.hacker,
+    rank: d.rank.toString(),
+    notes: d.notes,
+    avatar: d.avatar,
+    platform: 'hr' as const
+  }));
+
+  const flaggedCF = cfData.filter(d => d.is_flagged).map(d => ({
+    hacker: d.handle,
+    rank: (d.rating || 0).toString(),
+    notes: d.notes,
+    avatar: d.avatar || 'https://userpic.codeforces.org/no-avatar.jpg',
+    platform: 'cf' as const
+  }));
+
+  const allFlagged = [...flaggedHR, ...flaggedCF];
+
   return (
     <main className="min-h-screen bg-slate-950 font-sans text-slate-200">
       <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50">
@@ -37,7 +56,7 @@ export default async function FlaggedPage() {
         </div>
       </nav>
       
-      <FlaggedClient initialData={data} />
+      <FlaggedClient initialData={allFlagged} />
     </main>
   );
 }

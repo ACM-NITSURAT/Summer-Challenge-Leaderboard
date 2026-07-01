@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import * as xlsx from 'xlsx';
 
 const CONTEST_SLUG = 'acm-summer-challenge-2026';
 const OUTPUT_FILE = path.join(process.cwd(), 'data', 'leaderboard.json');
+const EXCEL_FILE = path.join(process.cwd(), 'public', 'ACM Summer Challenge 2026 (Responses) (1).xlsx');
 const LIMIT = 100;
 
 export async function fetchLeaderboard() {
@@ -58,10 +60,68 @@ export async function fetchLeaderboard() {
     }
   }
 
-  console.log(`Success! Fetched ${allModels.length} participants.`);
+  console.log(`Success! Fetched ${allModels.length} HackerRank participants.`);
+
+  // --- CODEFORCES SYNC ---
+  let cfModels: any[] = [];
+  try {
+    console.log("Parsing Excel file for Codeforces IDs...");
+    if (fs.existsSync(EXCEL_FILE)) {
+      const fileBuffer = fs.readFileSync(EXCEL_FILE);
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const data = xlsx.utils.sheet_to_json(sheet) as any[];
+      
+      const cfHandles = data
+        .map(row => row['Codeforces ID\nStrict Rule: Your Codeforces ID must be the exact same as your HackerRank ID name.  '])
+        .filter(handle => handle && typeof handle === 'string' && handle.trim() !== '')
+        .map(handle => handle.trim());
+      
+      // Distinct handles
+      const uniqueHandles = [...new Set(cfHandles)];
+      
+      if (uniqueHandles.length > 0) {
+        console.log(`Fetching Codeforces data for ${uniqueHandles.length} handles...`);
+        // Batch them 300 at a time
+        const fetchBatch = async (batch: string[]) => {
+          const cfUrl = `https://codeforces.com/api/user.info?handles=${batch.join(';')}`;
+          const cfRes = await fetch(cfUrl);
+          if (cfRes.ok) {
+            const cfData = await cfRes.json();
+            if (cfData.status === 'OK') {
+              cfModels = cfModels.concat(cfData.result);
+            }
+          } else {
+            console.warn(`Batch failed with status: ${cfRes.status}. Some handles might be invalid.`);
+            if (batch.length > 1) {
+              console.log("Retrying individually to filter out invalid handles...");
+              for (const h of batch) {
+                await new Promise(r => setTimeout(r, 300));
+                await fetchBatch([h]);
+              }
+            } else {
+              console.warn(`Handle ${batch[0]} is invalid on Codeforces or rate limited.`);
+            }
+          }
+        };
+
+        for (let i = 0; i < uniqueHandles.length; i += 30) {
+          const batch = uniqueHandles.slice(i, i + 30);
+          await fetchBatch(batch);
+          await new Promise(r => setTimeout(r, 500)); // sleep between large batches
+        }
+      }
+    } else {
+      console.warn("Excel file not found, skipping Codeforces fetch.");
+    }
+  } catch (err) {
+    console.error("Error fetching Codeforces data:", err);
+  }
 
   const finalData = {
     models: allModels,
+    cf_models: cfModels,
     total: allModels.length
   };
 

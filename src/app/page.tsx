@@ -1,5 +1,5 @@
-import { getProcessedLeaderboard } from '@/lib/data-utils';
-import LeaderboardClient from '@/components/LeaderboardClient';
+import { getProcessedLeaderboard, getProcessedCFLeaderboard } from '@/lib/data-utils';
+import LeaderboardTabs from '@/components/LeaderboardTabs';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import LogoutButton from '@/components/LogoutButton';
@@ -7,7 +7,8 @@ import LogoutButton from '@/components/LogoutButton';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const data = await getProcessedLeaderboard();
+  const hrData = await getProcessedLeaderboard();
+  const cfData = await getProcessedCFLeaderboard();
   const cookieStore = await cookies();
   const isAdmin = cookieStore.get('admin_session')?.value === 'true';
 
@@ -35,7 +36,7 @@ export default async function Home() {
         </div>
       </nav>
       
-      <LeaderboardClient initialData={data} isAdmin={isAdmin} />
+      <LeaderboardTabs hrData={hrData} cfData={cfData} isAdmin={isAdmin} />
     </main>
   );
 }

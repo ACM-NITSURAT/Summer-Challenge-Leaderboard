@@ -1,55 +1,63 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ProcessedLeaderboardEntry } from '@/lib/data-utils';
 import ActionModal from '@/components/ActionModal';
 
-export default function FlaggedClient({ initialData }: { initialData: ProcessedLeaderboardEntry[] }) {
-  const flagged = initialData.filter(d => d.is_flagged);
+type FlaggedUser = {
+  hacker: string;
+  rank: string;
+  notes?: string;
+  avatar: string;
+  platform: 'hr' | 'cf';
+};
+
+export default function FlaggedClient({ initialData }: { initialData: FlaggedUser[] }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     type: 'flag' | 'unflag' | 'alert';
     hacker: string;
+    platform: 'hr' | 'cf';
     title?: string;
     message?: string;
-  }>({ isOpen: false, type: 'alert', hacker: '' });
+  }>({ isOpen: false, type: 'alert', hacker: '', platform: 'hr' });
   const pageSize = 15;
 
-  const handleUnflag = (hacker: string) => {
+  const handleUnflag = (hacker: string, platform: 'hr' | 'cf') => {
     setModalConfig({
       isOpen: true,
       type: 'unflag',
-      hacker
+      hacker,
+      platform
     });
   };
 
   const executeUnflag = async () => {
-    const hacker = modalConfig.hacker;
+    const { hacker, platform } = modalConfig;
     setModalConfig(p => ({ ...p, isOpen: false }));
-    setLoading(hacker);
+    setLoading(`${platform}-${hacker}`);
 
     try {
       const res = await fetch('/api/flags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hacker, isFlagged: false })
+        body: JSON.stringify({ hacker, isFlagged: false, platform })
       });
       if (res.ok) {
         window.location.reload();
       } else {
-        setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'Failed to unflag.' });
+        setModalConfig({ isOpen: true, type: 'alert', hacker: '', platform, title: 'Error', message: 'Failed to unflag.' });
       }
     } catch (e) {
-      setModalConfig({ isOpen: true, type: 'alert', hacker: '', title: 'Error', message: 'An error occurred while unflagging.' });
+      setModalConfig({ isOpen: true, type: 'alert', hacker: '', platform, title: 'Error', message: 'An error occurred while unflagging.' });
     } finally {
       setLoading(null);
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(flagged.length / pageSize));
-  const paginatedData = flagged.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.max(1, Math.ceil(initialData.length / pageSize));
+  const paginatedData = initialData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="w-full max-w-6xl mx-auto py-12 px-4 text-slate-100 relative z-10">
@@ -62,15 +70,23 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/10 text-slate-400 text-xs font-semibold uppercase tracking-widest bg-black/20">
+              <th className="p-5">Platform</th>
               <th className="p-5">Hacker</th>
-              <th className="p-5">Original Rank</th>
+              <th className="p-5">Metric (Rank/Rating)</th>
               <th className="p-5">Notes</th>
               <th className="p-5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {paginatedData.map(entry => (
-              <tr key={entry.hacker} className="hover:bg-white/5 transition-all duration-200">
+              <tr key={`${entry.platform}-${entry.hacker}`} className="hover:bg-white/5 transition-all duration-200">
+                <td className="p-5">
+                  {entry.platform === 'hr' ? (
+                    <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">HackerRank</span>
+                  ) : (
+                    <span className="text-blue-400 text-xs font-bold uppercase tracking-wider bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">Codeforces</span>
+                  )}
+                </td>
                 <td className="p-5">
                   <div className="flex items-center gap-4">
                     <div className="relative">
@@ -81,31 +97,31 @@ export default function FlaggedClient({ initialData }: { initialData: ProcessedL
                     </div>
                   </div>
                 </td>
-                <td className="p-5 text-slate-500 font-mono text-lg">#{entry.rank}</td>
+                <td className="p-5 text-slate-500 font-mono text-lg">{entry.platform === 'hr' ? '#' : ''}{entry.rank}</td>
                 <td className="p-5">
                   <span className="text-slate-300 italic">{entry.notes || 'No notes provided'}</span>
                 </td>
                 <td className="p-5 text-right">
                   <button 
-                    onClick={() => handleUnflag(entry.hacker)}
-                    disabled={loading === entry.hacker}
+                    onClick={() => handleUnflag(entry.hacker, entry.platform)}
+                    disabled={loading === `${entry.platform}-${entry.hacker}`}
                     className="px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
                   >
-                    {loading === entry.hacker ? 'Unflagging...' : 'Unflag'}
+                    {loading === `${entry.platform}-${entry.hacker}` ? 'Unflagging...' : 'Unflag'}
                   </button>
                 </td>
               </tr>
             ))}
-            {flagged.length === 0 && (
+            {initialData.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-10 text-center text-slate-400 text-lg">No participants are currently flagged.</td>
+                <td colSpan={5} className="p-10 text-center text-slate-400 text-lg">No participants are currently flagged.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {flagged.length > pageSize && (
+      {initialData.length > pageSize && (
         <div className="flex justify-between items-center mt-8 px-2">
           <button 
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
